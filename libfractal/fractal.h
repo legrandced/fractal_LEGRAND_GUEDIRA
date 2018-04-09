@@ -7,6 +7,7 @@ typedef struct fractal {
   int width; //uint32_t ?
   int height; //uint32_t ?
   int ** value;
+  double mean;
   double a, b;
 } fractal_t;
 
