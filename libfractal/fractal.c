@@ -10,16 +10,18 @@ struct fractal *fractal_new(const char *name, int width, int height, double a, d
     return NULL;
   }
 
-  int **value = (int **) malloc(sizeof(int)*width*height);
+  int *value = (int *) malloc(sizeof(int)*width*height);
   if (value == NULL){
     fprintf(stderr, "malloc value failed\n");
     return NULL;
   }
-
+  f->value = (int **) malloc(sizeof(int *) * width);
+  f->value[0] = value;
+  for (int i=1 ; i<width ; i++) f->value[i] =f->value[i-1] + width;
   f->name = name;
   f->width = width;
   f->height = height;
-  f->value = value;
+
   f->a = a;
   f->b = b;
 

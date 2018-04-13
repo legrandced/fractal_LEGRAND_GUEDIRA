@@ -1,6 +1,0 @@
-fract1 1000 1000 -0.1 1.9
-fract2 1920 1080 1.2 -1.4
-fract3 1.65 1.6 1.52 1.25
-# ceci est un commentaire
-#ceci est un commentaire
-test3 654 987 -0.56123 0.12345678
