@@ -74,6 +74,22 @@ void print_fnhm(fractal_node_t *first){
 
 }
 
+void print_fnn(f_name_node_t *first){
+    if(first == NULL) printf("List Names vide\n");
+    else{
+        printf("Names = { ");
+        f_name_node_t *n = (f_name_node_t *) malloc(sizeof(f_name_node_t));
+        memcpy(n, first, sizeof(f_name_node_t));
+        while(n != NULL){
+            //IMPRIME LE NOM==================================================================================================
+            printf("%s ", n->f_name);
+            n = n->next;
+        }
+        printf("}\n");
+    }
+
+}
+
 void insert(fractal_node_t **fn, fractal_t *f){
     fractal_node_t *new = (fractal_node_t *) malloc(sizeof(fractal_node_t));
     if (new == NULL){
@@ -82,19 +98,14 @@ void insert(fractal_node_t **fn, fractal_t *f){
     }
     new->f = f;
     if(*fn == NULL){
-        printf("NULL========================\n");
         new->next = NULL;
         *fn = new;
     }
     else{
-        printf("NOTNULL========================\n");
         new->next = *fn;
         *fn = new;
     }
-    printf("%s %d %d %f %f\n", (*fn)->f->name, (*fn)->f->width, (*fn)->f->height, (*fn)->f->a, (*fn)->f->b);
-    printf("insert : ");
-    sleep(4);
-    print_fnhm(*fn);
+    //print_fnhm(*fn);
 }
 
 void clear(fractal_node_t **fn){
@@ -103,9 +114,8 @@ void clear(fractal_node_t **fn){
         removed = *fn;
         *fn = (*fn)->next;
         free(removed);
-        printf("Element cleared\n");
     }
-    print_fnhm(*fn);
+    //print_fnhm(*fn);
 }
 
 void write_in_file(char *filename, fractal_t *f){
@@ -139,8 +149,6 @@ void write_in_file(char *filename, fractal_t *f){
 // FONCTIONS SUR BUFFER=========================================================
 
 void push(fractal_buffer_t *fb, fractal_t *f){
-    //IMPRIME LA FRACTALE (TEST)==================================================================================================
-    printf("push : %s %d %d %f %f\n", f->name, f->width, f->height, f->a, f->b);
     fractal_node_t *new = (fractal_node_t*) malloc(sizeof(fractal_node_t));
     if (new == NULL){
         fprintf(stderr, "push : new NULL\n");
@@ -155,15 +163,13 @@ void push(fractal_buffer_t *fb, fractal_t *f){
         new->next = fb->first;
         fb->first = new;
     }
-    print_fnhm(fb->first);
+    //print_fnhm(fb->first);
 }
 
 fractal_t *pop(fractal_buffer_t *fractal_buffer){
     fractal_node_t *removed = fractal_buffer->first;
 
     fractal_t *f = fractal_buffer->first->f;
-    //IMPRIME LA FRACTALE (TEST)==================================================================================================
-    printf("pop : %s %d %d %f %f\n", f->name, f->width, f->height, f->a, f->b);
     fractal_buffer->first = fractal_buffer->first->next;
 
     free(removed);
@@ -192,7 +198,7 @@ int insert_name(const char* name, int (*cmp)(const char*, const char*)){
     }
 
     // size == 1 || to be placed as first
-    if(fnn_first->next == NULL || cmp(fnn_first->f_name, name) > 0) {
+    if(fnn_first->next == NULL || cmp(fnn_first->f_name, name) >= 0) {
         if(cmp(fnn_first->f_name, name) < 0) { // place after
             f_name_node_t *new = (f_name_node_t *) malloc(sizeof(f_name_node_t));
             if(new == NULL) return -1;
@@ -361,8 +367,7 @@ void *read_file_thread(void *arg){
 
     int word = 0, i = 0;
 
-    while(fr > 0){
-
+    while(fr > 0){ // si fr == 0 => fin du fichier
         //Ignore les lignes de commentaires et les lignes vides consécutives
         while(ch[0] == '#' || ch[0] == '\n'){
             //Ignore les commentaires dans le fichier lu
@@ -389,7 +394,7 @@ void *read_file_thread(void *arg){
         }
 
         //Lis ligne par ligne le fichier
-        while(ch[0] != '\n' && fr > 0){
+        while(fr > 0){
             do{
                 wordBuffer[i]=ch[0];
                 if ((fr = read(fo, (void *) &ch, sizeof(char))) < 0){
@@ -397,7 +402,7 @@ void *read_file_thread(void *arg){
                     return NULL;
                 }
                 i++;
-            }while(ch[0] != ' ' && ch[0] != '\n');//=======================A CHANGER DANS LAUTRE THREAD
+            }while(ch[0] != ' ' && ch[0] != '\n');
             wordBuffer[i] = '\0';
             switch (word) {
                 case 0: strcpy(name, wordBuffer); break;
@@ -408,17 +413,25 @@ void *read_file_thread(void *arg){
             }
             i=0;
             word++;
-            if ((fr = read(fo, (void *) &ch, sizeof(char))) < 0){
+            if(ch[0] == '\n') { //A REPENSER
+                if ((fr = read(fo, (void  *) &ch, sizeof(char))) < 0){
+                    fprintf(stderr, "read_file_thread : read()\n");
+                    return NULL;
+                }
+                break;
+            }
+            if ((fr = read(fo, (void  *) &ch, sizeof(char))) < 0){
                 fprintf(stderr, "read_file_thread : read()\n");
                 return NULL;
             }
         }
+
         word = 0;
         const_name = name;
         fractal_t *f = fractal_new(const_name, width, height, a, b);
 
         int insert;
-        if ((insert = insert_name(const_name, &compare)) == 1){
+        if ((insert = insert_name(f->name, &compare)) == 1){
             // If there are no empty slots, wait
             sem_wait(&fb_shared_uncomputed.empty);
             // If another thread uses the buffer, wait
@@ -434,6 +447,7 @@ void *read_file_thread(void *arg){
             fprintf(stderr, "read_file_thread : insert_name()\n");
             return NULL;
         }
+        //print_fnn(fnn_first);
     }
 
     fc = close(fo);
@@ -457,6 +471,7 @@ void *compute_thread(void *arg){
 
     while(1)
     {
+
         //PARTIE CONSOMMATEUR---------------------------------------------------
         // If there are no full slots, wait
         sem_wait(&fb_shared_uncomputed.full);
@@ -475,12 +490,14 @@ void *compute_thread(void *arg){
         for (int i = 0 ; i < fractal_get_width(f) ; i++){
             for (int j = 0 ; j < fractal_get_height(f) ; j++){
                 fractal_compute_value(f, i, j);
-                f->mean += (double) fractal_get_value(f, i, j);
+                f->mean += (long double) fractal_get_value(f, i, j);
             }
         }
         // Ecriture du fichier bitmap si -d est présent.
-        char *src = (char *) f->name;
-        if (d_arg) write_bitmap_sdl(f, strcat(src, ".bmp")); // condition : d_arg == 1
+        char *bmp_name = (char *) malloc(64);
+        strcpy(bmp_name, f->name);
+        strcat(bmp_name, ".bmp");
+        if (d_arg) write_bitmap_sdl(f, bmp_name); // condition : d_arg == 1
 
 
         //PARTIE PRODUCTEUR-----------------------------------------------------
@@ -523,8 +540,7 @@ void *final_thread(void *arg){
         if(f->mean > fn_highest_mean_first->f->mean){
             clear(&fn_highest_mean_first);
             insert(&fn_highest_mean_first, f);
-            sleep(5);
-            print_fnhm(fn_highest_mean_first);
+            //print_fnhm(fn_highest_mean_first);
 
         }
         else if (f->mean == fn_highest_mean_first->f->mean){
@@ -533,14 +549,13 @@ void *final_thread(void *arg){
     }
 
     fractal_node_t *current = fn_highest_mean_first;
-    char *src = (char *) malloc(64);
+    char *bmp_name = (char *) malloc(64);
     while (current != NULL){
-        strcpy(src, current->f->name);
-        if (!d_arg) write_bitmap_sdl(current->f, strcat(src, ".bmp")); // condition : d_arg == 0
+        strcpy(bmp_name, current->f->name);
+        strcat(bmp_name, ".bmp");
+        if (!d_arg) write_bitmap_sdl(current->f, bmp_name); // condition : d_arg == 0
         write_in_file(filename_out, current->f);
         current = current->next;
-        sleep(2);
-        printf("========================\n");
     }
 
     char* str = "FIN DU THREAD FINAL\n";
@@ -553,10 +568,11 @@ void *final_thread(void *arg){
 
 int main(int argc, char **argv){
     int i;
-    int n = argc - 2; //number of files
-    int m = n; //number of compute_threads
+    int n = argc - 2; //number of files aka number of read_file_thread
+    int m = n; //number of compute_threads, default value is n
 
-    // lecture des option
+    // LECTURE DE LA LIGNE DE COMMANDE------------------------------------------
+
     if(strcmp(argv[1],"-d")==0){
         n --;
         m --;
@@ -586,6 +602,8 @@ int main(int argc, char **argv){
         printf("%s\n", filenames[i]);
     }
 
+    //--------------------------------------------------------------------------
+
     //Initialisation de la liste des fractales possédant la plus grande valeur moyenne
     fn_highest_mean_first = (fractal_node_t*) malloc(sizeof(fractal_node_t));
     fn_highest_mean_first->next = NULL;
@@ -606,7 +624,7 @@ int main(int argc, char **argv){
 
     pthread_t read_stdin_pthread;
     pthread_t read_file_threads[n];
-    pthread_t compute_threads[n];
+    pthread_t compute_threads[m];
     pthread_t final_pthread;
 
     // THREADS CREATE-----------------------------------------------------------
@@ -630,8 +648,7 @@ int main(int argc, char **argv){
     char * str;
 
     // Fin des threads de lecture
-    for (i = 0; i < n; i++)
-    {
+    for (i = 0; i < n; i++){
         //attend la fin du thread
         pthread_join(read_file_threads[i], (void**)&str);
         printf("%s\n", str);
@@ -651,8 +668,7 @@ int main(int argc, char **argv){
 
     // Fin des threads de calcul
 
-    for (i = 0; i < m; i++)
-    {
+    for (i = 0; i < m; i++){
         //attend la fin du thread
         pthread_join(compute_threads[i], (void**)&str);
         printf("%s\n", str);
