@@ -8,3 +8,15 @@ LIBFILE=-Ilibfractal
 
 all: $(OBJ)
 	$(CC) $(CFLAGS) $(SRC) $(SRC2) $(LIBFILE) -o main $(LDFLAGS)
+
+lib:
+	cd libfractal && $(MAKE)
+
+tests:
+	make -s -C ./tests
+
+clean:
+	rm main *.o **/*.o **/*.a
+	cd tests && $(MAKE) clean
+
+.PHONY: tests all run

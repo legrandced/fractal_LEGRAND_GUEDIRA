@@ -686,6 +686,3 @@ int main(int argc, char **argv){
 }
 
 // =============================================================================
-
-//gcc -pthread -g -Wall -W -I/usr/include/SDL main.c libfractal/*.c -I libfractal -o main -lSDL
-//./main fichier1.txt fileOut.txt
